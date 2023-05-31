@@ -1,0 +1,574 @@
+---
+title: "vis_3"
+output: html_document
+date: "2022-11-10"
+---
+
+0. 환경 설정
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+sessionInfo()
+.libPaths()
+.libPaths("C:/Program Files/R/R-4.2.2/library")
+
+getwd()
+setwd("D:/R/Visualization")
+
+library(gapminder)
+library(tidyverse)
+library(socviz)
+```
+
+
+# 5. 그래프 표, 레이블 추가, 메모 작성
+
+세 가지 방식의 정교한 방법을 알아보자. 
+
+1. 첫째, 도표 작성을 위해 데이터를 ggplot으로 보내기 전에 미리 데이터를 변환하는 방법을 배운다. 
+
+- tidyverse에 있는 dplyr 라이브러리를 이용해 데이터를 정리할 수 있다. 
+
+- 이제 동작 동사 중 일부를 사용해 데이터를 
+
+
+2. 둘째, geom의 종류를 더 알아보고 그 중에서 선택하는 방법을 더 자세히 배울 것이다. 
+
+- 새로운 geom을 배울수록 더욱 과감해지고 ggplot의 기본 옵션과 설정에서 벗어날 것이다. 
+
+
+3. 단계적으로 커스터마이징해보면서 지금까지 당연한 것으로 여겼던 스케일, 가이드, 테마 함수를 자세히 알 수 있다. 
+
+- 도표에서 관심 있는 요소를 강조할 수 있고 서로 다른 geom 레이어를 쌓아 올리기 위해 이 방법을 사용하기 시작할 것이다. 
+
+
+4. 기본 접근 방식은 변하지 않을 것이다. 도표가 얼마나 복잡하든, 혹은 기능을 계층화하고 조정할 수 있는 개별 단계가 얼마나 많은지에 관계없이 항상 동일한 작업을 수행할 것이다. 우리가 원하는 것은 변수를 미학속성 요소로 매핑해 정리한 데이터 테이블과 특정 유형의 그래프다. 이를 계속해서 따라가다 보면 어떤 유형의 그래프라도 자신 있게 만들 수 있을 것이다.
+
+
+
+## 5.1 파이프를 사용한 데이터 요약 
+
+- 지역 내에서 종교에 대한 행렬의 도표를 원한다고 가정해보자. GSS 데이터의 기본 테이블에서 원하는 요약 도표로 갈 수 있도록 약간의 데이터 마이닝을 할 기회를 갖는다. 
+
+- 이 작업의 목표는 종교적 선호도의 백분율이 지역별로 그룹화된 요약표를 만드는 것
+
+- %>% 파이프라인 연산자 이용 
+
+  1. **(goup_by)** 데이터를 "지역별 종교" 또는 "연도별 간행물별 저자"와 같이 요약을 위해 중첩된 구조로 그룹화
+
+  2. **(filter or select)** 필터 또는 선택 부분 데이터를 행, 열 또는 둘 모두를 비교. 작업하고자 하는 테이블의 일부분을 돌려줌.
+  
+  3. **(mutate)** 현재 그룹화 수준에서 새 변수를 작성해 데이터를 변경한다. 이는 테이블을 집계하지 않고 테이블에 새로운 열을 추가함.
+  
+  4. **(summarize)** 그룹화된 데이터를 요약하거나 집계함. 이것은 높은 수준의 그룹화로 새로운 변수를 만듦. (예를 들어 mean() 또는 n()으로 평균을 계산할 수 있다. 결과적으로 더 작은 요약 테이블이 만들어지며, 필요하다면 요약하거나 변형할 수 있다.)
+  
+    - **dplyr**의 함수인 `group_by()`, `filter()`, `select()`, `mutate()`, `summarize()` 를 사용해 파이프라인에서 이러한 작업을 수행함
+    - 파이프 연산자의 왼쪽에서 입력을 받아서 오른쪽으로 결과를 전하는 방법에 대해 이해 필요
+    - 파이프 연산자 `%>%`는 `ctrl + shift + m`   
+  
+
+```{r}
+rel_by_region <- gss_sm %>% 
+  group_by(bigregion, religion) %>%
+  summarize(N = n()) %>% 
+  mutate(freq = N / sum(N),
+         pct = round((freq*100), 0))
+
+rel_by_region
+```
+
+파이프 라인을 따라 지나가는 객체와 그 객체에 작용하는 함수는  그들의 맥락에 대한 몇 가지 가정을 지닌다. 
+
+1. 작업 중인 기본 데이터프레임 객체의 이름을 지정하지 않아도 된다.
+
+  - 모든 것은 원 data frame에서 암묵적으로 이월된다. 
+
+  - 파이프라인 내에서 요약 및 기타 변환으로 생성된 일시적 또는 암시적 객체도 함께 전달됨
+
+2. group_by() 함수는 그룹화된 데이터 또는 중첩된 데이터가 summarize() 단계 내에서 처리되는 방법을 설정한다. 
+
+  - mean() 또는 sd() 또는 n()과 같이 summarize() 내에서 새 변수를 만드는 데, 사용되는 함수는 가장 안쪽의 그룹화 수준에 먼저 적용됨
+  
+  - 그룹화 레벨은 가장 바깥쪽에서 제일 안쪽까지 group_by() 내에서 왼쪽에서 오른쪽으로 이름이 지정된다. 
+  
+  - dplyr의 함수가 함수를 볼 때 요약 작업은 하나의 그룹화 수준에서 결과 요약은 다음 단계로 올라간다. 이 경우 개인 수준의 관찰에서 시작해 지역 내에서 종교에 따라 그룹화함
+    * summarize() 작업은 각 관측치를 집계해 각 종교와 관련된 사람들의 수를 각 지역별로 계산함 
+    
+3. mutate() 단계는 N 변수를 사용해 지역 내의 각 하위 그룹에 대한 상대적 빈도 freq를 생성하고, 마지막으로 반올림된 비율로 설정된 상대 빈도 pct를 생성함
+
+ - **mutate()** 작업은 테이블에서 열을 추가하거나 제거하지만 그룹화 수준은 변경하지 않는다. 
+ 
+
+
+
+* 변환결과
+
+파이프라인은 2,867개의 행과 32개의 칼럼을 가진 gss_sm 데이터프레임을 가져와 부분적으로 다음과 같이 보이는 24개의 행과 5개의 열이 있는 요약 테이블 rel_by_region으로 변환함 
+
+group_by()에 지정된 변수는 새로운 요약표 summarize() 및 mutate()로 작성된 변수가 추가되고 원래 데이터셋의 다른 모든 변수는 삭제됨 
+
+
+파이프 라인을 사용하여 pct 결과에 대한 검증 실시 
+```{r}
+rel_by_region %>% group_by(bigregion) %>% summarize(total = sum(pct))
+```
+
+이전과 마찬가지로 요약 테이블에서 백분율 값으로 직접 작업하기 때문에 geom_bar() 대신 geom_col()을 사용할 수 있음.
+
+- geom_col()에서 미리 계산된 값을 처리할 때 기본 위치는 비례적으로 쌓인 세로 막대 그래프를 만들며, dodge2를 사용하면 하위 범주(종교적 소속)를 그룹(지역) 내에 나란히 배치함
+
+```{r}
+p <- ggplot(rel_by_region, aes(x = bigregion, y = pct, fill = religion))
+p + geom_col(position = "dodge") + 
+  labs(x = "지역", y = "비율", fill = "종교") +
+  theme(legend.position = "top")
+```
+
+```{r}
+p <- ggplot(rel_by_region, aes(x = bigregion, y = pct, fill = religion))
+p + geom_col(position = "dodge2") + 
+  labs(x = "지역", y = "비율", fill = "종교") +
+  theme(legend.position = "top")
+```
+
+- dodge와 dodge2 인수의 차이점(여기서는 나타나지 않음)
+
+
+- 일반적으로 닷지 막대 그래프는 분할(facet)도표로 좀 더 명확하게 표현될 수 있다. 패싯을 사용하면 범례가 필요없으므로 차트를 더 쉽게 읽을 수 있다. 
+```{r}
+p <- ggplot(rel_by_region, aes(x = religion, y = pct, fill = religion))
+p + geom_col(position = "dodge2") + 
+  labs(x = NULL, y = "비율", fill = "Religion") + 
+  guides(fill = FALSE) + 
+#  coord_flip() +
+  facet_grid(~ bigregion)
+```
+
+
+- 가로축의 종교명을 읽기 어려움. 이를 바꾸기 위해 ggplot의 aes의 x와 y의 매핑을 바꾸거나 coord_flip() 함수를 사용해 작업을 수행함 
+
+- ggplot 3.4.0 부터는 guides(fill = FALSE)를 사용하지 않음. 아래와 같이 guides(fill = "none")으로 사용해야 함 
+It is now deprecated to specify guides(<scale> = FALSE) or scale_*(guide = FALSE) to remove a guide. Please use guides(<scale> = "none") or scale_*(guide = "none") instead (@yutannihilation, #4097)
+
+
+```{r}
+# aes의 x, y 매핑 변경 
+
+p <- ggplot(rel_by_region, aes(y = religion, x = pct, fill = religion))
+p + geom_col(position = "dodge2") + 
+  labs(y = NULL, x = "비율", fill = "Religion") + 
+  guides(fill = "none") + 
+#  coord_flip() +
+  facet_grid(~ bigregion)
+```
+
+```{r}
+# coord_flip() 함수 사용
+
+p <- ggplot(rel_by_region, aes(x = religion, y = pct, fill = religion))
+p + geom_col(position = "dodge2") + 
+  labs(x = NULL, y = "비율", fill = "Religion") + 
+  guides(fill = "none") + 
+  coord_flip() +
+  facet_grid(~ bigregion)
+```
+
+- 대부분 도표의 경우 좌표계는 직교 좌표이며, x축과 y축으로 정의된 평면에 도표를 표시한다. `coord_cartesian()` 함수는 이를 관리하지만 호출할 필요는 없다. 
+
+- `coord_flip()` 함수는 도표가 만들어진 후 x축과 y축을 전환한다. (축을 전환하는 것이지 설정한 aes의 매핑을 바꾸지 않음)
+
+
+
+## 5.2 그룹 또는 카테고리별 연속 변수
+
+- 새로운 데이터셋인 organdata: gapminder와 마찬가지로 국가-연도(country-year)의 구조를 가지고 있음 
+
+- 17개 OECD 국가에서 이식용 장기 기증에 관한 10년 이상 가치 있는 정보가 포함되어 있음 
+  (장기 조달률은 이식 수술에 사용하기 위해 시신 장기 기증자로부터 얻은 인간 장기의 수를 측정한 것)
+  
+```{r}
+organdata %>% select(1:6) %>% sample_n(size = 10)
+```
+
+기증자의 산점도를 연도별로 비교 
+```{r}
+p <- ggplot(data = organdata, mapping = aes(x = year, y = donors))
+p + geom_point()
+```
+
+geom_line()을 사용해 각 국가의 시계열을 그릴 수 있음
+
+- 이를 위해 ggplot에 그룹화 변수가 무엇인지 알려줘야 함
+
+- 국가(범주)의 수가 너무 많지 않기 때문에 국가별 그림을 추가할 수 있음
+
+```{r}
+p <- ggplot(data = organdata, mapping = aes(x = year, y = donors))
+p + geom_line(aes(group = country)) + facet_wrap(~ country)
+```
+
+국가별 Box-plot 그리기
+
+- geom_boxplot()을 사용해 국가별 연도별 변동 그림을 얻을 수 있다. 
+
+- 기본적으로 geom_bar()가 x에 매핑하는 카테고리에 의한 관측 수를 계산하는 것처럼 geom_boxplot()에서 작동하는 stat_boxplot()함수는 상자와 수염(whisker)을 그릴 수 있는 통계를 계산함 
+
+- geom_boxplot()은 분류할 변수(여기서는 country)와 요약하려는 연속 변수(여기서는 donors)를 말함
+
+```{r}
+p <- ggplot(data = organdata, 
+            mapping = aes(x = country, y = donors))
+p + geom_boxplot()
+```
+
+축 전환
+```{r}
+p <- ggplot(data = organdata, mapping = aes(x = country, y = donors))
+p + geom_boxplot() + coord_flip()
+```
+
+**평균 기증률이 높은 국가에서 낮은 국가순으로 나열**
+
+- donors의 평균에 의해 country 변수를 재정렬함 
+
+- reorder() 함수가 다시 정렬하는 역할의 함수를 함
+
+- R에서 평균을 구하려고 시도할 때 변수에 누락된 값이 있으면 기본 mean 함수를 이행하지 못하고 오류가 발생함 
+
+- 평균을 계산할 때 누락된 값을 제거해도 문제가 없다고 명시해야 함 
+
+  *`na.rm = TRUE` 인수를 reorder()에 제공해 내부적으로 mean()에 해당 인수를 전달*
+  
+```{r}
+p <- ggplot(data = organdata, 
+            mapping = aes(x = reorder(country, donors, na.rm = TRUE), y = donors))
+p + geom_boxplot() + labs(x = NULL) + coord_flip()
+```
+
+geom_violin() 함수 사용
+
+```{r}
+p <- ggplot(data = organdata, 
+            mapping = aes(x = reorder(country, donors, na.rm = TRUE), y = donors))
+p + geom_violin() + labs(x = NULL) + coord_flip()
+```
+
+박스플랏은 그림 5.9에서와 같이 color와 fill 값을 가져와 다른 geom과 같은 미학속성을 매핑할 수 있다. 
+
+```{r}
+p <- ggplot(data = organdata, 
+            mapping = aes(x = reorder(country, donors, na.rm = TRUE), 
+                          y = donors, 
+                          fill = world))
+p + geom_boxplot() + labs(x = NULL) + coord_flip() + theme(legend.position = "top")
+```
+
+기본 geom_point() 플롯 모양은 fill이 아니라 color 속성을 갖기 때문에 fill 대신 world 변수로 채움
+
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = reorder(country, donors, na.rm = TRUE),
+                          y = donors,
+                          color = world))
+p + geom_point() + labs(x = NULL) + coord_flip() + theme(legend.position = "top")
+```
+
+- geom_point()를 사용하면 관측값의 오버플로팅이 발생 -> 얼마나 많은 관측치가 있는지 더 잘 알려면 데이터를 조금 흩뜨려 놓는 geom_jitter()를 사용
+
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = reorder(country, donors, na.rm = TRUE),
+                          y = donors, 
+                          color = world))
+p + geom_jitter() + labs(x = NULL) +
+  coord_flip() + 
+  theme(legend.position = "top")
+```
+
+geom 내의 position_jitter() 함수에 대한 height와 width 인수 사용, 제어
+
+```{r}
+p <- ggplot(data = organdata, 
+            mapping = aes(x = reorder(country, donors, na.rm = TRUE),
+                          y = donors,
+                          color = world))
+p + geom_jitter(position = position_jitter(width = 0.15)) +
+  labs(x = NULL) + coord_flip() + theme(legend.position = "top")
+
+```
+
+**클리블렌드 점도표(Cleveland dotplot)**
+
+- 범주당 하나의 점을 갖는 범주형 변수를 요약하는 방법
+
+- 막대 그래프 또는 테이블 보다 나은 데이터 표현 방법
+
+- 파이프라인 이용 요약 통계량 생성 
+
+```{r}
+by_country <- organdata %>% group_by(consent_law, country) %>% 
+  summarize(donors_mean = mean(donors, na.rm = TRUE),
+            donors_sd = sd(donors, na.rm = TRUE),
+            gdp_mean = mean(gdp, na.rm = TRUE),
+            health_mean = mean(health, na.rm = TRUE),
+            roads_mean = mean(roads, na.rm = TRUE),
+            cerebvas_mean = mean(cerebvas, na.rm = TRUE))
+```
+```{r}
+by_country
+```
+
+**summarize_if 사용**
+
+```{r}
+by_country2 <- organdata %>% 
+                group_by(consent_law, country) %>% 
+                summarize_if(is.numeric, list(mean, sd), na.rm = TRUE) %>% 
+                ungroup()
+```
+
+```{r}
+by_country2
+```
+```{r}
+by_country3 <- organdata %>% 
+                group_by(consent_law, country) %>% 
+                summarize_if(is.numeric, funs(mean, sd), na.rm = TRUE) %>% 
+                ungroup()
+
+by_country3
+```
+
+- 파이프라인의 마지막 단계에서 데이터를 ungroup()해 결과가 평범한 티블이 되도록 함
+
+- 모든 숫자가 요약됨 -> 요약된 수치값을 이용해 그래프 그리기(클리블랜드 점도표)
+
+```{r}
+p <- ggplot(data = by_country3,
+            mapping = aes(x = donors_mean, 
+                          y = reorder(country, donors_mean),
+                          color = consent_law))
+
+p + geom_point(size = 3) +
+  labs(x = "기증자 조달율",
+       y = "", 
+       color = "Consent Law") +
+  theme(legend.position = "top")
+```
+
+- 원한다면 점을 채색하는 대신 패싯을 사용할 수 있다. facet_wrap()을 사용해 consent_law 변수를 두 개의 패널로 나눈 다음 각 패널 내에서 기증률로 국가 순위를 매길 수 있다. 
+
+```{r}
+p <- ggplot(data = by_country,
+            mapping = aes(x = donors_mean, 
+                          y = reorder(country, donors_mean)))
+
+p + geom_point(size = 3) +
+  facet_wrap(~ consent_law, scales = "free_y", ncol = 1) +
+  labs(x = "기증자 조달율", y = "")
+```
+
+```{r}
+p <- ggplot(data = by_country, 
+            mapping = aes(x = reorder(country, donors_mean),
+                          y = donors_mean))
+
+p + geom_pointrange(mapping = aes(ymin = donors_mean - donors_sd, 
+                                  ymax = donors_mean + donors_sd)) + 
+  labs(x = "", y ="기증자 조달율") + coord_flip()
+```
+
+## 5.3 텍스트를 직접 도표화하기
+
+- 산점도와 함께 레이블을 나타내거나 유용한 레이블을 직접 도표화하는 것이 유용할 때가 있음.
+```{r}
+p <- ggplot(data = by_country,
+            mapping = aes(x = roads_mean,
+                          y = donors_mean))
+
+p + geom_point() + geom_text(mapping = aes(label = country))
+```
+
+
+- geom_text()에 hjust 인자를 사용해 레이블을 왼쪽 또는 오른쪽으로 정렬할 수 있음
+
+```{r}
+p <- ggplot(data = by_country,
+            mapping = aes(x = roads_mean, y = donors_mean))
+
+p + geom_point() + geom_text(mapping = aes(label = country),
+                             hjust = 0)
+```
+
+- geom_text()의 레이블의 미세 조정이 어렵거나, 이 때문에 발생하는 공간 변형 등을 방지하고자 한다면 ggrepel을 사용
+
+- ggrepel 패키지는 geom_text_repel()과 geom_label_repel() 함수를 제공함 (이 두 함수는 geom_text()보다 훨씬 더 유연하게 레이블을 선택할 수 있음)
+
+```{r}
+library(ggrepel)
+```
+
+- geom_text_repel()이 수행할 수 있는 작업을 보여주기 위해 데이터셋을 전환
+
+```{r}
+elections_historic %>% select(2:7)
+```
+
+```{r}
+p_title <- "대통령 선거 : 일반 투표 및 선거인단 투표 격차 "
+p_subtitle <- "1824-2016"
+p_caption <- "2016년 데이터는 잠정치임"
+x_label <- "당선자의 일반 투표 점유율"
+y_label <- "당선자의 선거인단 투표 점유율"
+
+p <- ggplot(elections_historic, aes(x = popular_pct, y = ec_pct, label = winner_label))
+
+p + geom_hline(yintercept = 0.5, size = 1.4, color = "gray80") +
+    geom_vline(xintercept = 0.5, size = 1.4, color = "gray80") +
+    geom_point() + 
+    geom_text_repel() + 
+    scale_x_continuous(labels = scales::percent) + 
+    scale_y_continuous(labels = scales::percent) +
+    labs(x = x_label, y = y_label, title = p_title, subtitle = p_subtitle, caption = p_caption)
+```
+
+- 책의 저자는 geom_text() 보다 일반적으로 나은 선택이 될 것이라고 기술하고 있음
+
+
+
+## 5.4 이상치 라벨링
+
+- 때로는 모든 단일 항목에 레이블을 지정하지 않고 데이터에서 관심 있는 부분을 골라내고자 함
+
+- geom_text_repel()에 geom_point()가 사용하는 것과 다른 데이터 셋을 사용하도록 지시(subset() 함수 사용)
+
+```{r}
+p <- ggplot(data = by_country,
+            mapping = aes(x = gdp_mean, y = health_mean))
+
+p + geom_point() + 
+    geom_text_repel(data = subset(by_country, gdp_mean > 25000),
+                    mapping = aes(label = country))
+```
+
+
+```{r}
+p <- ggplot(data = by_country,
+            mapping = aes(x = gdp_mean, y = health_mean))
+
+p + geom_point() + 
+    geom_text_repel(data = subset(by_country, 
+                                  gdp_mean > 25000 | health_mean < 1500 | country %in% "Belgium"),
+                    mapping = aes(label = country, colour = "red"))
+```
+
+
+```{r}
+?geom_text_repel
+```
+
+
+- 더미 변수를 이용한 라벨링
+  ccode가 Ita, Spa 이며 1998보다 큰 연도의 데이터에 TRUE index(더미값) 생성
+```{r}
+organdata$ind <- organdata$ccode %in% c("Ita", "Spa") & organdata$year > 1998
+
+p <- ggplot(data = organdata,
+            mapping = aes(x = roads, 
+                          y = donors,
+                          color = ind))
+
+p + geom_point() +
+    geom_text_repel(data = subset(organdata, ind), 
+                    mapping = aes(label = ccode)) +
+    guides(label = FALSE, color = FALSE)
+```
+
+## 5.5 도표 영역에 쓰기와 그리기
+
+- 그림에 직접 주석을 달 때는 annotate() 함수를 호출하여 사용
+
+```{r}
+p <- ggplot(data = organdata, mapping = aes(x = roads, y = donors))
+
+p + geom_point() + annotate(geom = "text", x = 91, y =33,
+                            label = "놀라울 정도로 \n 높은 회복률", hjust = -0.5, colour = "red")
+```
+
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = roads, y = donors))
+
+p + geom_point() +
+    annotate(geom = "rect", xmin = 125, xmax = 155, 
+             ymin = 30, ymax = 35, fill = "red", alpha = 0.2) + 
+    annotate(geom = "text", x = 157, y = 33,
+             label = "놀라울 정도로 \n 높은 회복률", hjust = 0, colour = "red", alpha = 0.5)
+```
+
+
+## 5.6 척도, 가이드, 테마 이해하기 
+
+- 모든 미학적 매핑에는 척도가 있다. 해당 눈금 표시 또는 눈금 조정 방법을 조정하려면 scale_ 함수를 사용하라.
+
+- 많은 척도에는 독자가 그래프를 해석하는 데 도움이 되는 범례나 키가 있다. 이들을 가이드라고 부른다. guides() 함수를 사용해 조정해 볼 수 있다. 아마도 가장 일반적인 용례는 때로는 필요가 없을 때 범례를 안보이도록 만드는 것이다. 
+
+- 그래프에는 표시되는 데이터의 논리적 구조에 엄격하게 연결되지 않은 다른 함수가 있다. 여기에는 배경색, 레이블에 사용된 폰트 또는 그래프에서 범례의 배치와 같은 것들이 포함된다. 이를 조정하려면 theme() 함수를 사용 
+
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = roads, 
+                          y = donors,
+                          color = world,
+                          shape = world))
+p + geom_point()
+```
+
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = roads, 
+                          y = donors,
+                          color = world,
+                          shape = world))
+p + geom_point() + 
+    scale_x_log10() +
+    scale_y_continuous(breaks = c(5, 15, 25), labels = c("Five", "Fifteen", "Twenty Five"))
+```
+
+
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = roads, 
+                          y = donors,
+                          color = world))
+p + geom_point() + 
+    scale_color_discrete(labels = c("협동조합주의", "자유주의", "사회민주주의", "분류되지 않음")) +
+    labs(x = "도로 사망 사고", y = "기증자 조달", color = "사회복지제도")
+```
+
+- 가이드 삭제1
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = roads, 
+                          y = donors,
+                          color = world))
+p + geom_point() + 
+    labs(x = "도로 사망 사고", y = "기증자 조달", color = "사회복지제도") +
+    guides(color = "none")
+```
+
+- 가이드 삭제2
+```{r}
+p <- ggplot(data = organdata,
+            mapping = aes(x = roads, 
+                          y = donors,
+                          color = world))
+p + geom_point() + 
+    labs(x = "도로 사망 사고", y = "기증자 조달", color = "사회복지제도") +
+    guides(color = FALSE)
+```
+
+- 스케일 함수는 아래의 규칙으로 명명됨됨
+```
+scale_<매핑(mapping)>_<종류(kind)>() 
+```

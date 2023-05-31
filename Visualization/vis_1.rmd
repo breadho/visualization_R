@@ -1,0 +1,450 @@
+---
+title: "Visualization"
+output: html_document
+date: "2022-11-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# knitr::opts_chunk$set(fig.width = 8, fig.height = 5)
+```
+
+
+## 0. 환경 설정 
+```{r}
+sessionInfo()
+.libPaths()
+.libPaths("C:/Program Files/R/R-4.2.2/library")
+```
+
+사용 버전 
+R version 4.2.2 (2022-10-31 ucrt)
+
+```{r}
+getwd()
+setwd("D:/R/Visualization")
+```
+
+
+필요 패키지 설치 
+```{r}
+my_packages <- c("tidyverse", "broom", "coefplot", "cowplot",
+                 "gapminder", "GGally", "ggrepel", "ggridges",
+                 "gridExtra", "here", "interplot", "margins",
+                 "maps", "mapproj", "mapdata", "MASS", "quantreg", 
+                 "rlang", "sclaes", "survey", "srvyr", "virids",
+                 "viridisLite", "devtools")
+
+# 패키지 설치 (최초 1회만 실행)
+# install.packages(my_packages)
+# devtools::install_github("kjhealy/socviz")
+# update.packages()
+```
+
+
+## 1. 데이터 보기
+```{r}
+anscombe
+```
+
+## 2. 시작하기
+
+## transcription
+- 1. 코드 작성하기
+- 2. 출력 결과 살펴보기 
+- 3. 메모하기 
+
+
+### 2.6 첫번째 그림 만들기
+```{r}
+library(gapminder)
+library(tidyverse)
+gapminder
+```
+
+ggplot 이용하기
+
+```{r}
+p <- ggplot(data = gapminder, mapping = aes(x = gdpPercap, y = lifeExp))
+p + geom_point()
+```
+
+
+
+## 3. 도표 만들기
+
+### 3.1 ggplot의 동작 방식
+
+- 1. 정돈된 데이터 
+- 2. 매핑
+- 3. 형태(Geom)
+- 4. 좌표계 및 척도 
+- 5. 레이블 및 안내선
+
+
+
+### 3.2 깔끔한 데이터(tidy data)
+
+도표 작성을 위한 스키마
+```
+p <- ggplot(data = <data>,
+            mapping = aes(<aesthetic> = <variable>,
+                          <aesthetic> = <variable>,
+                          <...> = <...>))
+                          
+p + geom_<type>(<...>) + 
+    scale_<mapping>_<type>(<...>) + 
+    coord_<type>(<...>) +
+    labs(<...>)
+```
+
+### 3.3 매핑, 데이터를 시각 요소에 연결하기
+
+1. 데이터 인식
+```{r}
+p <- ggplot(data = gapminder)
+p
+```
+
+
+2. 매핑
+```{r}
+p <- ggplot(data = gapminder, 
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+
+p
+```
+
+p 객체는 ggplot 함수로 생성되었고, 
+우리가 원하는 매핑 정보 및 기본으로 추가된 정보를 이미 담고 있다.
+다만, 어떤 종류의 표를 그려야 하는지는 아직 알려주지 않았다. 
+산점도를 나타내라는 geom_point()를 추가한다.
+
+```{r}
+p + geom_point()
+```
+
+
+### 3.4 레이어별로 도표 만들기
+
+ggplot에게 무슨 일을 해야 하는지 자세히 설명하는 것을 배우게 된다.
+사용할 수 있는 geom(또는 도표 유형)에 대해 더 배우고 좌표계(coordinate system)와 
+척도, 가이드 요소 및 도표의 테마 특성을 제어하는 함수
+
+
+도표 만드는 순서
+
+1. 데이터가 무엇인지 ggplot 함수에 알린다.
+
+2. ggplot()에게 우리가 알고 싶은 관계를 통보한다. 편의상 처음 두 단계의 결과를 p라는 객체에 넣을 것임
+
+```
+   p <- ggplot(data = , mapping = )
+```
+3. 데이터 간의 관계를 어떤 방식으로 보고 싶은지 ggplot에게 알린다. 
+
+4. 필요에 따라 geom 객체에 레이어를 쌓고 한 번에 하나씩 p 객체에 추가한다.
+
+```
+  p + geom_<type>
+```
+
+5. 몇 가지 추가 함수를 사용해 척도, 레이블, 눈금, 제목을 조정한다. 
+
+
+위와 같이 사용하면, 그래프의 종류를 변경하는 일이 용이해질 것임
+
+
+```{r}
+# 추세선을 사용한 GDP 대비 기대수명 도표
+p + geom_smooth()
+```
+
+콘솔 메시지 R은 geom_smooth() 함수가 gam이라는 메서드 method를 사용하고 있음을 알려줌
+이 경우 일반화 가법 모형(generalized additive model)에 적합하다는 의미를 나타냄
+
+이때 대신 사용할 수 있는 방법이 있음을 암시함
+method의 인수를 바꿔보자.
+
+```{r}
+p + geom_point() + geom_smooth(method = "lm")
+```
+
+로그 스케일 추가 
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+
+p + geom_point() +
+    geom_smooth(method = "gam") + 
+    scale_x_log10()
+
+```
+
+x축을 $로 표시하기
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+
+p + geom_point() +
+    geom_smooth(method = "gam") + 
+    scale_x_log10(labels = scales::dollar)
+```
+
+### 3.5 미적 요소 매핑과 설정하기
+
+미적 요소 매핑은 변수를 크기, 색상, 모양처럼 시각 요소 중 하나로 표현하도록 정해줌
+변수는 아래와 같이 미적 요소에 매핑함
+
+```{r}
+p <- ggplot(data = gapminder, 
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp,
+                          color = continent))
+```
+
+위의 코드는 "변수 continent를 속성 'color'로 나타내라" 또는 "continent에 색상이 매핑될 것이다"와 같은 정보를 제공한다.
+
+실제로 그래프를 그리면 대륙별로 다른 컬러와 평활 곡선이 나타나는 것을 확인할 수 있다.
+
+```{r}
+p <- ggplot(data = gapminder, 
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp,
+                          color = continent))
+
+p + geom_point() + geom_smooth(method = "loess") + scale_x_log10()
+```
+
+
+만약 color를 "purple"로 놓는다면?
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp, 
+                          color = "purple"))
+
+p + geom_point() + geom_smooth(method = "loess") + scale_x_log10()
+```
+
+컬러를 "purple"로 지정하면 색상을 보라색으로 넣는 것이 아니라 
+purple이라는 카테고리를 만들고 색상 파레트의 첫 번째 색상인 빨간색이 지정됨
+
+aes() 함수는 매핑에만 사용된다는 점에 유의!
+
+속성 값을 설정하려면 우리가 사용하는 geom_과 mapping = aes(...) 단계의 바깥에서 진행
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+p + geom_point(color = "purple") + geom_smooth(method = "loess") +
+  scale_x_log10()
+```
+
+위와 같이 점의 색상 속성을 직접 설정할 수 있음
+
+
+
+```{r}
+p <- ggplot(data = gapminder, 
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+
+p + geom_point(alpha = 0.3) +
+    geom_smooth(color = "orange",
+                se = FALSE,
+                size = 1,
+                method = "lm") +
+    scale_x_log10()
+```
+alpha는 투명도를 설정하는 인수로 0 ~ 1로 설정할 수 있다.
+
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+
+p + geom_point(alpha = 0.3) + geom_smooth(method = "lm") +
+    scale_x_log10(labels = scales::dollar) +
+    labs(x = "GDP Per Capita",
+         y = "Life Expectancy in Years",
+         title = "경제성장률과 기대수명",
+         subtitle = "데이터 포인트는 연도별 국가임",
+         caption = "자료: 갭마인더")
+```
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+
+p + geom_point(alpha = 0.3) + geom_smooth(method = "gam") +
+    scale_x_log10(labels = scales::dollar) +
+    labs(x = "GDP Per Capita",
+         y = "Life Expectancy in Years",
+         title = "경제성장률과 기대수명",
+         subtitle = "데이터 포인트는 연도별 국가임",
+         caption = "자료: 갭마인더")
+```
+labs() 함수는 x축 라벨, y축 라벨, 표제, 부제, 캡션 등을 설정할 수 있다.
+
+
+만약 geom 함수에 다른 지시사항이 없다면 원래 객체에 포함된 geom의 매핑 속성이 모두 상속된다. 
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp,
+                          color = continent))
+
+p + geom_point() + geom_smooth(method = "loess") +
+    scale_x_log10()
+```
+
+원한다면 각 선의 표준오차 리본을 주조색(dominant color)과 일치하도록 음영 처리할 수 있음 
+(미적 요소 aes의 fill을 통해 실행)
+- color가 선과 점의 외관에 영향을 미치는 반면,
+- fill은 막대와 다각형의 채워진 영역, 평활기(smoother)의 표준오차 리본 내부를 채우는 것 
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap, 
+                          y = lifeExp,
+                          color = continent,
+                          fill = continent))
+
+p + geom_point() + geom_smooth(method = "loess") + 
+    scale_x_log10()
+```
+
+
+### 3.6 미적특질은 geom마다 매핑될 수 있다. 
+
+- 만약 추체선은 한 개, 점은 대륙별로 색상을 달리하고 싶다면?
+
+기본적으로 geom()은 ggplot() 함수에서 기존 매핑을 상속받는데, 
+각 geom 마다 미적 특징(aesthetics)을 달리할 수 있다. 
+(geom_ 함수도 활용해서 각각 적용하려는 매핑을 명시)
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap,
+                          y = lifeExp))
+p + geom_point(mapping = aes(color = continent)) +
+    geom_smooth(method = "loess",
+                color = "steelblue") +
+    scale_x_log10()
+```
+
+연속형 변수도 color에 매핑할 수 있다. 
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = gdpPercap, 
+                          y = lifeExp))
+
+p + geom_point(mapping = aes(color = log(pop))) + scale_x_log10()
+```
+
+
+### 3.7 작업 저장하기
+
+코드 청크 옵션을 통해 도표의 크기 설정
+
+```{r}
+# knitr::opts_chunk$set(fig.width = 8, fig.height = 5)
+```
+
+특정 청크에 동일한 옵션을 넣을 수도 있음
+
+```{r example, fig.width=12, fig.height=9}
+p + geom_point()
+```
+
+R마크다운으로 작성하지 않은 문서나 논문에 삽입하는 이미지는 따로 저장해둬야 함
+
+- ggplot으로 작업할 때는 ggsave() 함수를 사용하면 가장 쉬움 
+
+```{r}
+# ggsave(filename = "my_figure.png")
+```
+
+- 플롯 객체를 ggsave()에 전달 가능 
+```{r}
+p_out <- p + geom_point() + geom_smooth(method = "loess") + 
+             scale_x_log10()
+
+ggsave("my_figure.pdf", plot = p_out)
+```
+
+here() 함수를 사용해 작업을 좀 더 간단하고 안전하게 저장하고 불러올 수 있다. 
+
+```{r}
+library(here)
+ggsave(here("figures", "lifeexp_vs_gdp_gradient.pdf"), plot = p_out)
+```
+
+## 정리
+![image.png](./pictures/gglayers.png)
+
+## Basic Requirements to generate a ggplot
+
+```
+ggplot(data = <DATA>) +
+
+  <GEOM function> (mapping = aes(<mappings), 
+                   stat = <STAT>,
+                   position = <POSITION>) +
+                   
+  <COORDINATE function> +
+  <SCALE function> +
+  <THEME function> + 
+  <FACET function> + ...
+```  
+  
+* Data 
+  - 정돈된 포맷(tidy format) 필요
+  - `dplyr` 이용 준비 
+
+* Aesthetics
+  - `x`, `y`: x축과 y축 변수 설정 
+  - `colour` : 기하적 구조의 색상 설정
+  - `fill` : 기하적 구조 안에 채우는 색상 설정
+  - `group` : 기하적 구조를 구분짓는 그룹 설정 
+  - `shape` : 점의 형태 
+  - `linetype` : 선의 형태 
+  - `size` : x축과 y축 이외의 기타 차원(extra dimension)의 스케일링 지정 
+  - `alpha` : 기하적 구조의 투명도 
+
+* Geometric objects
+  - `geom_point()`: 스캐터 플랏(scatter plot)
+  - `geom_line()`: 라인 플랏
+  - `geom_path()`: 순차적으로 데이터를 연결하는 선을 그리는 플랏
+  - `geom_boxplot()`: 카테고리별 변수에 대한 박스플랏
+  - `geom_bar()`: 카테고리별 변수 x에 대한 바 차트 
+  - `geom_histogram()`: 연속형 변수 x에 대한 히스토그램
+  - `geom_violin()`: 데이터 분산에 대한 커널 분포를 박스플랏처럼 나타낸 플랏
+  - `geom_smooth()`: 평활화한 플랏
+  
+* Facets
+  - `facet_wrap()` or `facet_grid()`: 다중 그래프 생성 
+  
+* Statistics 
+  - geom과 비슷하지만 계산이 필요
+  - 평균, 카운트 및 요약통계량 표시 
+
+* Coordinates
+  - `coord_cartesian`: 리밋 설정 
+  - `coord_polar`: 원형 플랏
+  - `coord_map`: for different map projections
+  
+* Themes
+  - 기본 설정 및 폰트, 색상, 아웃라인 등 설정 
+
+

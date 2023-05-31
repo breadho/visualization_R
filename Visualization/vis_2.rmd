@@ -1,0 +1,324 @@
+---
+title: "vis_2"
+output: html_document
+date: "2022-11-08"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+환경 설정
+```{r}
+library(gapminder)
+library(tidyverse)
+library(socviz)
+```
+
+
+## 4.1 무색의 초록 데이터가 맹렬하게 잠을 잔다.
+(Colorless Green Data Sleeps Furiously)
+
+- 문법적으로는 이상이 없지만 기대하지 않은 그래프가 그려질 수 있음
+
+
+## 4.2 그룹화 데이터와 "그룹" 미적특질
+
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = year, 
+                          y = gdpPercap))
+p + geom_line()
+```
+
+- ggplot으로 표를 작업해 가면서 발생하는 실수는 표를 원하는 모습으로 만들어 가다 생기는 작은 해프닝임
+
+- 도표 생성에는 문제가 없었는데 결과가 비정상으로 보인다면 데이터와 geom을 사용하는 미적특질 간의 매핑에 문제가 발생했을 확률이 높다.
+
+
+```{r}
+p <- ggplot(data = gapminder, 
+            mapping = aes(x = year,
+                          y = gdpPercap))
+p + geom_line(aes(group = country))
+```
+
+
+## 4.3 소규모 다중 도표를 만드는 패싯(facet)
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = year,
+                          y = gdpPercap))
+p + geom_line(aes(group = country)) + facet_wrap(~continent)
+```
+
+```{r}
+p <- ggplot(data = gapminder,
+            mapping = aes(x = year,
+                          y = gdpPercap))
+
+p + geom_line(color = "gray70", aes(group = country)) +
+    geom_smooth(size = 1.1, method = "loess", se = FALSE) +
+    scale_y_log10(labels = scales::dollar) + 
+    facet_wrap(~ continent, ncol = 5) +
+    labs(x = "Year", y = "1인당 GDP", title = "다섯 대륙의 1인당 GDP")
+```
+
+- facet_wrap() 함수는 단일 범주 변수를 기준으로 하는 소규모 다중 도표를 만들 때 가장 유용하게 사용됨
+
+- 어떤 데이터를 두 개의 범주형 변수로 교차 분류해야 한다면 facet_grid()를 대신 사용해 볼 수 있다. (이 함수는 그리드 위에 패널을 정렬하는 대신 실제 2차원 배열로 도표를 배치함)
+
+
+- gss_sm 미국 종합사회조사기관(General Social Survey), GSS는 사회과학자들이 관심을 갖는 다양한 주제를 미국 성인을 대상으로 장기간에 걸쳐 설문 조사를 시행함
+
+- gss_sm 데이터는 범주 타입 데이터가 많이 있음 
+
+```{r}
+p <- ggplot(data = gss_sm,
+            mapping = aes(x = age, y = childs))
+
+p + geom_point(alpha = 0.2) +
+    geom_smooth() +
+    facet_grid(sex ~ race)
+```
+
+```{r}
+glimpse(gss_sm)
+```
+
+- 다중 패널 레이아웃은 두 개 이상의 범주형 변수를 포함하고 값이 연속적으로 변하는 데이터를 요약할 때 특히 유용함
+
+- 더 많은 범주형 변수가 수식에 추가되면 복잡한 다중 도표를 표현할 수 있음
+  (ex: sex ~ race + degree)
+  
+- 그러나 변수와 관련된 범주가 많아지면 여러 차원을 나타내는 도표가 지나치게 복잡해짐 
+
+
+## 4.4 geom은 데이터를 변환할 수 있다. 
+
+- 모든 geom_ 함수에는 기본적으로 사용되는 stat_ 함수가 있음
+
+- 모든 stat_ 함수에는 geom_ 함수가 있고 특별한 명령이 없으면 기본값으로 도표화됨
+
+
+* geom_bar()
+
+- aes(x = bigregion)로 한 가지 매핑만 지정함
+- 데이터에는 없는 y축 변수 count가 나타남 -> geom_bar가 기본 stat_ 함수인 stat_count()를 호출해 보이지 않는 곳에서 계산함 
+- 이 함수는 두 개의 새로운 변수인 count와 prop을 계산함 (count 통계는 기본적으로 geom_bar()가 사용하는 통계임)
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion))
+
+p + geom_bar()
+```
+
+
+- 절대적인 카운트가 아닌 상대적인 비도를 보여주는 차트를 원한다면 대신 prop 통계를 얻어야 함
+
+- ggplot은 카운트나 비율을 계산할 때 도표에서 매핑으로 사용할 수 있는 임시 변수를 반환함 
+- 관련 통계는 prop이 아니라 ..prop..으로 표시
+ ( 이 임시 변수가 작업 중인 다른 변수와 혼동되지 않고자 두 변수의 이름은 두 개의 마침표로 시작하고 끝남, 이미 데이터셋에 count나 prop 이라는 변수를 갖고 있기 때문)
+ 
+- aes() 함수에서 일반적으로 <mapping> = <..static..>과 같이 호출함 
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion))
+p + geom_bar(mapping = aes(y = ..prop..))
+```
+
+- 하지만 위의 결과는 막대의 비율이 모두 1이 되어 모든 막대의 높이가 같음
+
+- 우리가 원하는 것은 이 값들을 합쳤을 때 1이 되는 것이므로, 지역별 관측값을 전체 대비 비율값으로 가져와야 함
+
+- 이 경우 ggplot에 비율을 계산할 때 x-범주를 무시하고 총 수 관측치를 대신 분모로 사용하도록 지시해야 함 
+(이 작없을 위해 aes()호출 내에서 group = 1을 지정함. 값 1은 ggplot에게 prop 계산을 위해 분모를 설정할 때 전체 데이터셋을 사용하도록 지시하는 일종의 "더미그룹"임)
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion))
+p + geom_bar(mapping = aes(y = ..prop.., group = 1))
+```
+
+- gss_sm 데이터에는 "귀하의 종교는 무엇인가?"라는 질문에서 파생된 religion 변수가 포함됨 
+```{r}
+table(gss_sm$religion)
+```
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = religion, color = religion))
+p + geom_bar()
+```
+
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = religion, fill = religion))
+p + geom_bar() + guides(fill = FALSE)
+```
+
+## 4.5 약간 어색한 방식으로 표시된 빈도 도표 
+
+- 막대그래프로 카테고리를 교차 분류할 때 결과를 표시하는 방법은 여러 가지가 있다. 
+- geom_bar()를 사용하면 출력은 position 인수로 제어된다. fill을 religion에 매핑하는 것으로 시작하자.
+
+```{r}
+p <- ggplot(data = gss_sm, 
+            mapping = aes(x = bigregion, fill = religion))
+p + geom_bar()
+```
+
+
+- 동일 비율 내에서 비교 
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion, fill = religion))
+p + geom_bar(position = "fill")
+```
+
+
+- 여러 지역의 막대를 나란히 배치
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion, fill = religion))
+p + geom_bar(position = "dodge", mapping = aes(y = ..prop.., group = religion))
+```
+
+- 단, ..prop.. dot-dot notation은 추후 사라질 표현으로 이를 대신하는 after_stat(prop)을 사용 
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion, fill = religion))
+p + geom_bar(position = "dodge", mapping = aes(y = after_stat(prop), 
+                                               group = religion))
+```
+
+- group 매핑
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion, fill = religion))
+p + geom_bar(position = "dodge", mapping = aes(y = ..prop.., group = religion))
+```
+
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = bigregion, fill = religion))
+p + geom_bar(position = "dodge", mapping = aes(y = after_stat(prop), group = religion))
+```
+
+
+- 위의 누적 막대그래프를 가져와 비율을 서로 겹치지 않고 나란히 표시 
+
+```{r}
+p <- ggplot(data = gss_sm, mapping = aes(x = religion, fill = bigregion))
+p + geom_bar(position = "dodge", mapping = aes(y = after_stat(prop), 
+                                                   group = bigregion)) +
+  facet_wrap(~bigregion, ncol = 2)
+```
+
+
+## 4.6 히스토그램과 밀도 도표
+
+- 히스토그램은 연속 변수를 세그먼트 또는 "구간(bin)"으로 잘라서 각 빈에서 발견되는 관측치 수를 세는 방법으로 연속 변수를 요약하는 방법
+
+- 기본적으로 geom_histogram() 함수는 어림짐작에 따라 현재 구간의 크기를 선택
+
+```{r}
+p <- ggplot(data = midwest, mapping = aes(x = area))
+p + geom_histogram()
+```
+
+```{r}
+p <- ggplot(data = midwest, mapping = aes(x = area))
+p + geom_histogram(bins = 10)
+```
+
+
+- 히스토그램은 단일 변수를 기준으로 삼아 요약할 수도 있지만 동시에 여러 변수를 사용해 분포를 비교할 수도 있다. 
+
+```{r}
+oh_wi <- c("OH", "WI")
+
+p <- ggplot(data = subset(midwest, subset = state %in% oh_wi),
+            mapping = aes(x = percollege, fill = state))
+p + geom_histogram(alpha = 0.4, bins = 20)
+```
+
+
+- 연속 변수를 사용해 작업할 때 데이터를 나누고 히스토그램을 작성하는 대신 기본 분포의 커널 밀도 추정을 계산할 수 있다. geom_density() 함수는 이를 수행한다. 
+
+```{r}
+p <- ggplot(data = midwest, mapping = aes(x = area))
+p + geom_density()
+```
+
+- color를 사용해 선에 색을 입히고, fill을 이용해 밀도 곡선을 채울수도 있다. 
+
+```{r}
+p <- ggplot(data = midwest, mapping = aes(x = area, fill = state, color = state))
+p + geom_density(alpha = 0.3)
+```
+
+
+- geom_density()의 경우 stat_density() 함수는 기본 ..density.. 통계치 또는 ..scaled.. 를 반환할 수 있으며, 이는 비례 밀도 추정을 제공함
+- 또한, ..count..라는 통계치를 반환할 수 있음
+
+```{r}
+p <- ggplot(data = subset(midwest, subset = state %in% oh_wi),
+            mapping = aes(x = area, fill = state, color = state))
+p + geom_density(alpha = 0.3, mapping = (aes(y = ..scaled..)))
+```
+
+## 4.7 필요할 때 변형 방지하기
+
+- 통계치 또는 집계치를 이용한 그래프 그리기
+
+```{r}
+titanic
+```
+
+- 요약된 표에 백분율 값이 이미 있기 때문에 ggplot을 사용해 값을 계산하지 않아도 된다. 
+즉, geom_bar()가 일반적으로 호출하는 stat_ 함수의 서비스는 필요하지 않다. 
+
+- geom_bar() 호출 시 어떤 작업도 하지 말라고 지시할 수 있다. 이를 위해 geom_bar() 호출 시 stat = 'identity'라고 알린다. 
+
+```{r}
+p <- ggplot(data = titanic, 
+            mapping = aes(x = fate, 
+                          y = percent,
+                          fill = sex))
+
+p + geom_bar(position = "dodge", stat = "identity") + theme(legend.position = "top")
+```
+
+- ggplot은 편의상 geom_col() 이라는 함수를 제공하는데, 이 함수는 사용자가 stat = "identity"를 명시하지 않아도 동일한 효과를 적용함
+
+- stat = "identity"는 "요약 계산 작업을 하지 마라"는 의미이며, position = "identity"는 "주어진 값대로 플랏하라"라는 의미이다. 
+
+- 이렇게 하면 막대그래프에서 양수 값과 음수 값의 흐름을 플로팅하는 것과 같은 작업을 수행할 수 있다. 이러한 종류의 그래프는 선 차트의 대안으로 공공 정책 자료에서 자주 볼 수 있는데, 특정 입곗값이나 기준선 대비 변경폭을 알고 싶을 때 사용된다. 
+
+- socviz의 oecd_sum 테이블에는 미국 및 다른 OECD 국가에서 조사한 출생 연도 대비 평균 기대 수명을 알려주는 정보가 있다. 
+
+```{r}
+oecd_sum
+```
+
+
+- other 열은 미국을 제외한 OECD 국가의 평균 기대수명, usa 열은 미국의 기대수명을 나타냄 
+- 그리고 diff는 앞선 두 값의 차이이며, hi_lo는 미국의 수치가 그해의 OECD 평균값에 비해 얼마나 높거나 낮은지를 나타냄
+
+- 시간의 경과에 따라 차이를 그려보고 hi_lo 변수를 사용해 차트의 열을 채워봄
+
+```{r}
+p <- ggplot(data = oecd_sum,
+            mapping = aes(x = year, y = diff, fill = hi_lo))
+p + geom_col() + guides(fill = FALSE) + 
+  labs(x = NULL, 
+       y = "Difference in Years",
+       title = "미국 기대수명 차이",
+       subtitle = "미국과 OECD 국가 간의 평균 기대수명 차이, 1960-2015" ,
+       caption = "자료: OECD. 크리스토퍼 잉그럼이 '워싱턴 포스트'에 2017년 12월 27일 작성한 차트")
+```
+
+- 타이타닉 도표와 마찬가지로 geom_col()은 기본적으로 stat과 position을 모두 "identity"로 설정함. geom_bar()를 사용하되 동일한 효과를 얻으려면 geom_bar(position = "identity")가 필요하다. 
+
+- guides(fill = FALSE) 명령은 ggplot에게 불필요한 범례를 삭제

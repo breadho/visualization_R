@@ -1,0 +1,81 @@
+---
+title: "vis_5"
+output: html_document
+date: "2022-11-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+rm(list = ls())
+
+sessionInfo()
+.libPaths()
+.libPaths("C:/Program Files/R/R-4.2.2/library")
+
+getwd()
+setwd("D:/R/Visualization")
+
+library(gapminder)
+library(tidyverse)
+library(socviz)
+```
+
+
+# 7. 지도 그리기 
+
+## 7.1 주 단위의 미국 지도 데이터 
+
+```{r}
+election %>% select(state, total_vote, r_points, pct_trump, party, census) %>% sample_n(5)
+```
+
+
+- FIPS 코드는 미국의 주와 영토를 번호로 나타내는 연방 코드다. 모든 미국 카운티에는 6자리 숫자의 고유 식별자가 있으며, 여기서 처음 두 자리는 주를 나타낸다. 4자리 숫자가 추가돼 카운티 수준까지 확장된다. 
+
+- 이 데이터셋에는 각 주의 인구조사 지역도 포함되어 있다. 
+
+```{r}
+# 민주당 파랑(Dem Blue)과 공화당 빨강(Rep Red)용 16 진수 색상 코드
+party_colors <- c("#2E74C0")
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
